@@ -3,14 +3,16 @@
 # Written by Rafe Hart (@rafael_hart)
 # Updated for Python 3.12+ by M365 Copilot
 """
-Test an IP address (port 443) for CVE-2000-0649
-Performs an HTTPS GET to the target and searches the response body for IPv4 patterns.
+Test an IP address (TLS port, default 443) for CVE-2000-0649-like behavior:
+Perform an HTTPS GET to the target and search the response body for IPv4 patterns.
 """
 
 import ssl
 import socket
 import re
 import sys
+import argparse
+from typing import List
 
 
 def make_tls_socket(host: str, port: int, timeout: int = 8) -> socket.socket:
@@ -24,62 +26,4 @@ def make_tls_socket(host: str, port: int, timeout: int = 8) -> socket.socket:
     return tls_sock
 
 
-def main():
-    if len(sys.argv) == 1:
-        print("\nUsage: test.py <hostname> [path]")
-        print("  hostname: <example.com> или <IP>")
-        print("  path: абсолютный путь, по умолчанию '/'")
-        sys.exit(1)
-
-    target = sys.argv[1]
-    path = sys.argv[2] if len(sys.argv) > 2 else "/"
-    if not path.startswith("/"):
-        path = "/" + path
-
-    try:
-        s = make_tls_socket(target, 443, timeout=8)
-        request = (
-            f"GET {path} HTTP/1.1\r\n"
-            f"Host: {target}\r\n"
-            "User-Agent: CVE-2000-0649-Check/1.0\r\n"
-            "Accept: */*\r\n"
-            "Connection: close\r\n"
-            "\r\n"
-        )
-        s.sendall(request.encode("utf-8"))
-    except (socket.timeout, OSError, ssl.SSLError) as exc:
-        print(f"Didn't work: {exc}")
-        sys.exit(1)
-
-    ipv4_pattern = re.compile(r"\b(\d{1,3}(?:\.\d{1,3}){3})\b")
-    try:
-        buffer = bytearray()
-        while True:
-            chunk = s.recv(4096)
-            if not chunk:
-                break
-            buffer.extend(chunk)
-    finally:
-        try:
-            s.close()
-        except Exception:
-            pass
-
-    # Декодирование ответа
-    for enc in ("iso-8859-1", "utf-8"):
-        try:
-            text = buffer.decode(enc, errors="replace")
-            break
-        except Exception:
-            continue
-
-    matches = ipv4_pattern.findall(text)
-    if matches:
-        for m in matches:
-            print(f"{target} -> {m}")
-    else:
-        print("IPv4 адреса в ответе не обнаружены.")
-
-
-if __name__ == "__main__":
-    main()
+def is_private_ipv4(ip: str) -> bool:
