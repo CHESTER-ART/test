@@ -26,7 +26,7 @@ def make_tls_socket(host: str, port: int, timeout: int = 8) -> socket.socket:
 
 def main():
     if len(sys.argv) == 1:
-        print("\nUsage: cve-2000-0649.py <hostname> [path]")
+        print("\nUsage: test.py <hostname> [path]")
         print("  hostname: <example.com> или <IP>")
         print("  path: абсолютный путь, по умолчанию '/'")
         sys.exit(1)
@@ -65,17 +65,13 @@ def main():
         except Exception:
             pass
 
-    text = None
+    # Декодирование ответа
     for enc in ("iso-8859-1", "utf-8"):
         try:
             text = buffer.decode(enc, errors="replace")
             break
         except Exception:
             continue
-
-    if not text:
-        print("Не удалось декодировать ответ сервера.")
-        sys.exit(1)
 
     matches = ipv4_pattern.findall(text)
     if matches:
@@ -87,4 +83,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-``
